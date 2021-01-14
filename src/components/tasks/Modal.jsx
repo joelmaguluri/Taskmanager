@@ -1,51 +1,5 @@
 import React from "react";
 import styled from "styled-components";
-import { database } from "../../app";
-
-const storeDataToFirebase = async (e, uid) => {
-  e.preventDefault();
-  let date = new Date();
-  let taskname = e.target["task"].value;
-  await database.collection("taskboard").add({
-    taskname,
-    datecreated: date.toDateString(),
-    time: date.getTime(),
-    completed: false,
-  });
-  let tasksinfo = database.collection("users").doc(uid);
-  console.log(tasksinfo, "taskinfo");
-
-  if (tasksinfo.totaltasks == null)
-    database
-      .collection("users")
-      .doc(uid)
-      .set({ completedtasks: 0, totaltasks: 1 }, { merge: true });
-  else
-    database
-      .collection("users")
-      .doc(uid)
-      .set(
-        {
-          completedtasks: tasksinfo.completedtasks,
-          totaltasks: tasksinfo.totaltasks + 1,
-        },
-        { merge: true }
-      );
-};
-
-const updateTaskInfo = async (e, taskid) => {
-  let newtaskname = e.target["task"].value;
-  e.preventDefault();
-  database
-    .collection("taskboard")
-    .doc(taskid)
-    .set(
-      {
-        taskname: newtaskname,
-      },
-      { merge: true }
-    );
-};
 
 let ModalWrapper = styled.div`
   position: fixed;
@@ -71,8 +25,20 @@ let ModalWrapper = styled.div`
 `;
 
 const Modal = (props) => {
-  const { type, show, onClick } = props;
-  console.log(type, show, onClick);
+  const { type, show, closeModal } = props;
+  var onSubmitHandler;
+  if (type === "edit")
+    onSubmitHandler = (e) => {
+      e.preventDefault();
+      console.log(props.taskname, props.time);
+      props.updateTaskName(e, props.taskname, props.time);
+    };
+  else {
+    onSubmitHandler = (e) => {
+      e.preventDefault();
+      props.createNewTask(e);
+    };
+  }
   return (
     <ModalWrapper display={show}>
       <section className="modal-main">
@@ -82,21 +48,14 @@ const Modal = (props) => {
               <h5 className="modal-title">
                 {type === "edit" ? "Update Task" : "New Task"}
               </h5>
-              <button type="button" className="close" onClick={onClick}>
+              <button type="button" className="close" onClick={closeModal}>
                 <span aria-hidden="true">&times;</span>
               </button>
             </div>
 
             <div className="modal-body">
               <div>
-                <form
-                  className="login100-form"
-                  onSubmit={
-                    type === "edit"
-                      ? (e) => updateTaskInfo(e, props.taskid)
-                      : (e) => storeDataToFirebase(e, props.uid)
-                  }
-                >
+                <form className="login100-form" onSubmit={onSubmitHandler}>
                   <div className="form-group">
                     <div className="wrap-input100 validate-input mb-4">
                       <input

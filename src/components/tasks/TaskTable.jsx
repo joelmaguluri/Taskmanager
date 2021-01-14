@@ -1,6 +1,8 @@
-import React, { Component } from "react";
+import React, { Component, useState } from "react";
+import { connect } from "react-redux";
 import styled from "styled-components";
 import { database } from "../../app";
+import { createNewTask, retrievetasks, updateTaskName } from "../../api/api";
 import Modal from "./Modal";
 const Wrapper = styled.div`
   ::-webkit-scrollbar {
@@ -19,54 +21,43 @@ const Wrapper = styled.div`
     background: #c1dfff;
   }
 `;
-async function deletetask(id) {
-  console.log("id", id);
-  database
-    .collection("taskboard")
-    .doc(id)
-    .delete();
-}
 
-const Task = ({ taskname, datecreated, taskid, completed, id }) => {
-  console.log("taskid", taskid);
+const Task = ({
+  taskname,
+  time,
+  completed,
+  completedtasks,
+  totaltasks,
+  uid,
+  deleteTask,
+  datecreated,
+  updateTaskName,
+}) => {
+  const [state, updateState] = useState({ show: false, checked: completed });
   return (
     <div className="todo-item all-todo-list p-3 border-bottom position-relative">
       <div className="inner-item d-flex align-items-start">
         <div className="w-100">
           {/* Checkbox */}
           <div className="custom-control custom-checkbox d-flex align-items-start">
-            {completed ? (
-              <input
-                type="checkbox"
-                className="custom-control-input"
-                id={`checkbox${id}`}
-                onChange={(e) => {
-                  // updateState(!checked);
-                }}
-                checked
-              />
-            ) : (
-              <input
-                type="checkbox"
-                className="custom-control-input"
-                id={`checkbox${id}`}
-                onChange={(e) => {
-                  // updateState(!checked);
-                }}
-              />
-            )}
-            <label className="custom-control-label" htmlFor={`checkbox${id}`} />
+            <input
+              type="checkbox"
+              className="custom-control-input"
+              id={`checkbox-${time}`}
+              checked={state.checked}
+            />
+
+            <label
+              className="custom-control-label"
+              htmlFor={`checkbox-${time}`}
+            />
 
             <div>
               <div className="content-todo">
-                <h5
-                  className="font-medium font-16 todo-header mb-0"
-                  data-todo-header="Meeting with Mr.Jojo Sukla at 5.00PM"
-                >
-                  {completed ? <del>{taskname}</del> : taskname}
+                <h5 className="font-medium font-16 todo-header mb-0">
+                  {taskname}
                 </h5>
                 <span className="todo-time font-12 text-muted">
-                  <i className="icon-calender mr-1" />
                   {datecreated}
                 </span>
               </div>
@@ -76,17 +67,28 @@ const Task = ({ taskname, datecreated, taskid, completed, id }) => {
                 <div
                   className="edit-todo todo-action mr-3"
                   style={{ display: "inline", cursor: "pointer" }}
+                  onClick={() =>
+                    updateState((state) => ({
+                      show: !state.show,
+                      checked: state.checked,
+                    }))
+                  }
                 >
-                  <i
-                    class="fas fa-edit"
-                    data-toggle="modal"
-                    data-target="#exampleModal"
-                  ></i>
+                  <i class="fas fa-edit"></i>
                 </div>
                 <div
                   class="delete-todo todo-action"
                   style={{ display: "inline", cursor: "pointer" }}
-                  onClick={() => deletetask(taskid)}
+                  onClick={() =>
+                    deleteTask(
+                      taskname,
+                      time,
+                      completed,
+                      completedtasks,
+                      totaltasks,
+                      uid
+                    )
+                  }
                 >
                   <i class="fas fa-trash"></i>
                 </div>
@@ -95,33 +97,48 @@ const Task = ({ taskname, datecreated, taskid, completed, id }) => {
           </div>
         </div>
       </div>
-      {/* Content */}
-      <Modal taskid={taskid} type={"edit"} />
+
+      <Modal
+        type={"edit"}
+        show={state.show}
+        closeModal={() =>
+          updateState((state) => ({
+            show: !state.show,
+            checked: state.checked,
+          }))
+        }
+        uid={uid}
+        taskname={taskname}
+        updateTaskName={updateTaskName}
+        time={time}
+      />
     </div>
   );
 };
 
-export default class TaskTable extends Component {
-  state = {
-    taskboard: [],
-    tasks: [],
-  };
+class TaskTable extends Component {
+  state = { displaymodal: false, tasks: [] };
+
   componentDidMount = async () => {
-    database.collection("taskboard").onSnapshot((snapshot) => {
-      console.log("onSnapshot Called!");
-      let updatedData = snapshot.docs.map((doc) => ({
-        data: doc.data(),
-        id: doc.id,
-      }));
-      this.setState({ tasks: updatedData, taskboard: updatedData });
-    });
+    const { settasks, uid } = this.props;
+    let taskboard = await database.collection("taskboard").get();
+    taskboard = taskboard.docs;
+    taskboard = taskboard.map((doc) => ({
+      data: doc.data(),
+      id: doc.id,
+    }));
+    let taskssinfo = await database.collection("users").doc(uid);
+    taskssinfo = await (await taskssinfo.get()).data();
+    const { completedtasks, totaltasks } = taskssinfo;
+    await settasks(taskboard, { completedtasks, totaltasks });
+
+    this.setState({ tasks: taskboard });
   };
+
   searchtaskbyname = (e) => {
     // get the whole collection
-    let { taskboard } = this.state;
+    let { taskboard } = this.props;
     let inputtaskname = e.target.value;
-    console.log("debugging");
-    console.log(taskboard);
     let searchresult = taskboard.filter((task) =>
       task.data["taskname"]
         .replace(/\s/g, "")
@@ -130,11 +147,16 @@ export default class TaskTable extends Component {
     );
     this.setState({ tasks: searchresult });
   };
-
   render() {
-    const { tasks, taskboard } = this.state;
-    console.log(taskboard);
-
+    const { tasks, displaymodal } = this.state;
+    const {
+      uid,
+      taskboard,
+      totaltasks,
+      createNewTask,
+      deleteTask,
+      updateTaskName,
+    } = this.props;
     return (
       <div className="limiter">
         <div className="container">
@@ -155,8 +177,7 @@ export default class TaskTable extends Component {
                 />
                 <button
                   class="btn btn-primary my-2 my-sm-0"
-                  data-toggle="modal"
-                  data-target="#exampleModal"
+                  onClick={() => this.setState({ displaymodal: !displaymodal })}
                 >
                   <i class="fa fa-plus mr-2" />
                   Add Task
@@ -180,19 +201,31 @@ export default class TaskTable extends Component {
                   }}
                 >
                   <div className="p-3">
-                    {tasks.map(({ data, id }, uniqueid) => {
-                      const { taskname, datecreated, completed } = data;
-                      console.log(id);
+                    {tasks.map(({ data, id }) => {
+                      const { taskname, datecreated, completed, time } = data;
                       return (
                         <Task
                           taskname={taskname}
                           datecreated={datecreated}
-                          id={uniqueid}
                           taskid={id}
                           completed={completed}
+                          uid={uid}
+                          deleteTask={deleteTask}
+                          time={time}
+                          updateTaskName={updateTaskName}
                         />
                       );
                     })}
+                    <Modal
+                      show={displaymodal}
+                      type="new"
+                      closeModal={() =>
+                        this.setState({ displaymodal: !displaymodal })
+                      }
+                      uid={uid}
+                      totaltasks={totaltasks}
+                      createNewTask={createNewTask}
+                    />
                   </div>
                 </Wrapper>
               </div>
@@ -203,3 +236,24 @@ export default class TaskTable extends Component {
     );
   }
 }
+
+let mapStateToProps = (state) => {
+  let { taskboard, completedtasks, totaltasks } = state.tasks;
+  return {
+    taskboard: taskboard,
+    completedtasks: completedtasks,
+    totaltasks: totaltasks,
+  };
+};
+
+let mapDispatchToProps = (dispatch) => {
+  return {
+    settasks: (taskboard, taskinfo) =>
+      retrievetasks(taskboard, taskinfo, dispatch),
+    updateTaskName: (e, taskname, time) =>
+      updateTaskName(e, taskname, time, dispatch),
+    createNewTask: (e) => createNewTask(e, dispatch),
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(TaskTable);

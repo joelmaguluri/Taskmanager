@@ -1,12 +1,47 @@
 import React, { Component } from "react";
+import { database } from "../../app";
 import GraphChart from "./Pie";
 
+const SortedTask = ({ taskname, completed }) => {
+  console.log(taskname);
+  return (
+    <div className="recent-post-signle rct-pt-mg-wp">
+      <a href="#">
+        <div className="recent-post-flex">
+          <div className="recent-post-it-ctn">
+            <p>{completed ? <del>{taskname}</del> : { taskname }}</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  );
+};
 export default class Cards extends Component {
   state = {
     completedtasks: 0,
     totaltasks: 0,
+    sortedtasks: [],
   };
+  componentDidMount = () => {
+    const { uid } = this.props;
+
+    database.collection("users").onSnapshot(async (snapshot) => {
+      let userinfo = await database
+        .collection("users")
+        .doc(uid)
+        .get();
+      userinfo = userinfo.data();
+
+      this.setState({
+        completedtasks: userinfo.completedtasks,
+        totaltasks: userinfo.totaltasks,
+      });
+    });
+  };
+
   render() {
+    const { completedtasks, totaltasks, sortedtasks } = this.state;
+    console.log("sorted", sortedtasks);
     return (
       <div className="card-container mb-3">
         <div className="container">
@@ -44,7 +79,8 @@ export default class Cards extends Component {
                         className="login100-form-title h1"
                         style={{ fontSize: "100px" }}
                       >
-                        18<h4 style={{ display: "inline" }}>/20</h4>
+                        {completedtasks}
+                        <h4 style={{ display: "inline" }}>/{totaltasks}</h4>
                       </span>
                     </div>
                   </div>
@@ -73,42 +109,28 @@ export default class Cards extends Component {
                   </div>
                 </div>
                 <div className="recent-post-items pt-5">
-                  <div className="recent-post-signle rct-pt-mg-wp">
-                    <a href="#">
-                      <div className="recent-post-flex">
-                        <div className="recent-post-it-ctn">
-                          <p>
-                            Nunc quis diam diamurabitur at dolor elementum,
-                            dictum turpis vel
-                          </p>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-                  <div className="recent-post-signle">
-                    <a href="#">
-                      <div className="recent-post-flex rct-pt-mg">
-                        <div className="recent-post-it-ctn">
-                          <p>
-                            Nunc quis diam diamurabitur at dolor elementum,
-                            dictum turpis vel
-                          </p>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-                  <div className="recent-post-signle rct-pt-mg-wp">
-                    <a href="#">
-                      <div className="recent-post-flex">
-                        <div className="recent-post-it-ctn">
-                          <p>
-                            Nunc quis diam diamurabitur at dolor elementum,
-                            dictum turpis vel
-                          </p>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
+                  {/* {sortedtasks.map((info) => {
+                    console.log("data", info);
+                    return (
+                      <>
+                        <h1>Sudep</h1>
+                        <SortedTask
+                          taskname={info.data.taskname}
+                          completed={info.data.completed}
+                        />
+                      </>
+                    );
+                  })} */}
+                  {sortedtasks.map(({ data, id }) => {
+                    const { taskname, completed } = data;
+                    return (
+                      <SortedTask
+                        taskname={taskname}
+                        completed={completed}
+                        id={id}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -132,7 +154,10 @@ export default class Cards extends Component {
                         height: "300px",
                       }}
                     >
-                      <GraphChart />
+                      <GraphChart
+                        completedtasks={completedtasks}
+                        totaltasks={totaltasks}
+                      />
                     </div>
                   </div>
                 </div>

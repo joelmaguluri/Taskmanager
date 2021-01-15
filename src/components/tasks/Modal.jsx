@@ -1,5 +1,7 @@
 import React from "react";
 import styled from "styled-components";
+import Button from "../widgets/Button";
+import Input from "../widgets/Input";
 
 let ModalWrapper = styled.div`
   position: fixed;
@@ -29,13 +31,10 @@ const Modal = (props) => {
   var onSubmitHandler;
   if (type === "edit")
     onSubmitHandler = (e) => {
-      e.preventDefault();
-      console.log(props.taskname, props.time);
       props.updateTaskName(e, props.taskname, props.time);
     };
   else {
     onSubmitHandler = (e) => {
-      e.preventDefault();
       props.createNewTask(e);
     };
   }
@@ -43,7 +42,14 @@ const Modal = (props) => {
     <ModalWrapper display={show}>
       <section className="modal-main">
         <div className="modal-dialog modal-dialog-centered " role="document">
-          <div className="modal-content wrap-login100 p-l-55 p-r-55 p-t-65 p-b-50">
+          <div
+            className="modal-content"
+            style={{
+              borderRadius: "10px",
+              boxShadow: "rgba(0, 0, 0, 0.1) 0px 3px 20px 0px",
+              width: "100%",
+            }}
+          >
             <div className="modal-header" style={{ borderBottom: "0px" }}>
               <h5 className="modal-title">
                 {type === "edit" ? "Update Task" : "New Task"}
@@ -55,7 +61,35 @@ const Modal = (props) => {
 
             <div className="modal-body">
               <div>
-                <form className="login100-form" onSubmit={onSubmitHandler}>
+                <div className="content">
+                  <div className="container">
+                    <div className="row justify-content-center">
+                      <div className="col-md-6 contents">
+                        <div className="row justify-content-center">
+                          <div className="col-md-12">
+                            <div className="form-block">
+                              <form onSubmit={onSubmitHandler}>
+                                <Input
+                                  type="text"
+                                  name="task"
+                                  placeholder="taskname"
+                                />
+
+                                <Button
+                                  type="submit"
+                                  className="btn btn-block btn-primary mt-4"
+                                >
+                                  {type === "edit" ? "Update Task" : "New Task"}
+                                </Button>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* <form className="login100-form" onSubmit={onSubmitHandler}>
                   <div className="form-group">
                     <div className="wrap-input100 validate-input mb-4">
                       <input
@@ -76,7 +110,7 @@ const Modal = (props) => {
                       </button>
                     </div>
                   </div>
-                </form>
+                </form> */}
               </div>
             </div>
           </div>

@@ -1,39 +1,27 @@
 import React, { Component } from "react";
-import Chart from "chart.js";
+import { Chart } from "react-google-charts";
 
-export default class GraphChart extends Component {
-  constructor(props) {
-    super(props);
-    this.myRef = React.createRef();
-  }
-
-  componentDidMount = () => {
-    const { completedtasks, totaltasks } = this.props;
-    let a = totaltasks - completedtasks;
-    var dataArray;
-    if (a == 0) dataArray = [100, 0];
-    else if (a > completedtasks) dataArray = [a, completedtasks];
-    else dataArray = [completedtasks, a];
-
-    const ctx = this.ctx;
-    new Chart(ctx, {
-      type: "pie",
-      data: {
-        labels: ["Incomplete", "Completed"],
-        datasets: [
-          {
-            data: dataArray,
-            backgroundColor: ["#c1dfff", "#f6f6f6"],
-          },
-        ],
-      },
-    });
-  };
+export default class PieChart extends Component {
   render() {
+    const { completedtasks, totaltasks } = this.props;
     return (
-      <div>
-        <canvas width="800" height="600" ref={(ctx) => (this.ctx = ctx)} />
-      </div>
+      <Chart
+        width={"300px"}
+        height={"200px"}
+        chartType="PieChart"
+        loader={<div>Loading Chart</div>}
+        data={[
+          ["Tasks", "Total"],
+          ["Completed", completedtasks],
+          ["Incomplete", totaltasks - completedtasks],
+        ]}
+        options={{
+          legend: "none",
+          pieSliceText: "label",
+          pieStartAngle: 100,
+        }}
+        rootProps={{ "data-testid": "4" }}
+      />
     );
   }
 }

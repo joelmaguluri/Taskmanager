@@ -2,9 +2,17 @@ import React, { Component, useState } from "react";
 import { connect } from "react-redux";
 import styled from "styled-components";
 import { database } from "../../app";
-import { createNewTask, retrievetasks, updateTaskName } from "../../api/api";
+import Input from "../widgets/Input";
+import { CardTitle } from "../widgets/Typography";
 import Modal from "./Modal";
+
 const Wrapper = styled.div`
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 3px 20px 0px rgba(0, 0, 0, 0.1);
+  max-height: 400px;
+  overflow: scroll;
   ::-webkit-scrollbar {
     width: 5px;
   }
@@ -26,12 +34,11 @@ const Task = ({
   taskname,
   time,
   completed,
-  completedtasks,
-  totaltasks,
   uid,
   deleteTask,
   datecreated,
   updateTaskName,
+  togglecheckboxState,
 }) => {
   const [state, updateState] = useState({ show: false, checked: completed });
   return (
@@ -45,6 +52,12 @@ const Task = ({
               className="custom-control-input"
               id={`checkbox-${time}`}
               checked={state.checked}
+              onClick={() => {
+                togglecheckboxState(state.checked, taskname, time);
+                updateState((state) => ({
+                  checked: !state.checked,
+                }));
+              }}
             />
 
             <label
@@ -67,28 +80,22 @@ const Task = ({
                 <div
                   className="edit-todo todo-action mr-3"
                   style={{ display: "inline", cursor: "pointer" }}
-                  onClick={() =>
+                  onClick={async () => {
                     updateState((state) => ({
                       show: !state.show,
                       checked: state.checked,
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   <i class="fas fa-edit"></i>
                 </div>
                 <div
                   class="delete-todo todo-action"
                   style={{ display: "inline", cursor: "pointer" }}
-                  onClick={() =>
-                    deleteTask(
-                      taskname,
-                      time,
-                      completed,
-                      completedtasks,
-                      totaltasks,
-                      uid
-                    )
-                  }
+                  onClick={(e) => {
+                    e.preventDefault();
+                    deleteTask(taskname, time, completed);
+                  }}
                 >
                   <i class="fas fa-trash"></i>
                 </div>
@@ -117,117 +124,260 @@ const Task = ({
 };
 
 class TaskTable extends Component {
-  state = { displaymodal: false, tasks: [] };
+  state = {
+    displaymodal: false,
+    tasks: [],
+    taskboard: [],
+  };
 
   componentDidMount = async () => {
-    const { settasks, uid } = this.props;
+    //updating the component with tasks after retrieving from database
     let taskboard = await database.collection("taskboard").get();
     taskboard = taskboard.docs;
     taskboard = taskboard.map((doc) => ({
       data: doc.data(),
       id: doc.id,
     }));
-    let taskssinfo = await database.collection("users").doc(uid);
-    taskssinfo = await (await taskssinfo.get()).data();
-    const { completedtasks, totaltasks } = taskssinfo;
-    await settasks(taskboard, { completedtasks, totaltasks });
-
-    this.setState({ tasks: taskboard });
+    this.setState({
+      taskboard: taskboard,
+      tasks: taskboard,
+    });
   };
 
   searchtaskbyname = (e) => {
-    // get the whole collection
-    let { taskboard } = this.props;
+    /*filters the tasks based on the search*/
+    let { taskboard } = this.state;
     let inputtaskname = e.target.value;
+
+    //compare the tasks which matches input task and display them
     let searchresult = taskboard.filter((task) =>
       task.data["taskname"]
         .replace(/\s/g, "")
         .toLowerCase()
         .includes(inputtaskname.toLowerCase())
     );
+
     this.setState({ tasks: searchresult });
   };
+
+  createNewTask = async (e) => {
+    /* creates new task updates the component state 
+    and store the new task in database*/
+    e.preventDefault();
+    const { uid } = this.props;
+    let { taskboard, completedtasks, totaltasks } = this.state;
+    let date = new Date();
+    let taskname = e.target["task"].value;
+
+    const data = {
+      taskname: taskname,
+      completed: false,
+      datecreated: date.toDateString(),
+      time: date.getTime(),
+    };
+
+    database.collection("taskboard").add(data);
+    taskboard = [...taskboard, { data: data, id: data.time }];
+
+    //Incrementing total tasks field of user document in database
+    database
+      .collection("users")
+      .doc(uid)
+      .set(
+        {
+          completedtasks: completedtasks,
+          totaltasks: totaltasks + 1,
+        },
+        { merge: true }
+      )
+      .then((response) => console.log(response))
+      .catch((e) => console.log(e));
+
+    //setting the component state with new task
+    await this.setState({
+      taskboard: taskboard,
+    });
+    // dispatch method to modify store with new values
+  };
+
+  updateTaskName = (e, taskname, time) => {
+    /*Updates state with new task name and also collection*/
+    e.preventDefault();
+    let newtaskname = e.target["task"].value;
+    let { taskboard } = this.state;
+
+    //mapping through the tasks to find the relavent task and updating name
+    taskboard = taskboard.map((task) => {
+      const { data, id } = task;
+      if (data.taskname === taskname && data.time === time) {
+        data.taskname = newtaskname;
+        return {
+          data: data,
+          id: id,
+        };
+      }
+      return task;
+    });
+
+    this.setState({
+      taskboard: taskboard,
+    });
+  };
+
+  deleteTask = async (taskname, time, completed) => {
+    /* Deletes the task from the component state and also from the database*/
+
+    let { taskboard, completedtasks, totaltasks } = this.state;
+    const { uid } = this.props;
+
+    //filtering tasks to find the relevant task and to delete it
+    let updatedData = [];
+    taskboard.forEach((task) => {
+      let data = task.data;
+      if (data.taskname === taskname && data.time === time);
+      else updatedData.push(task);
+    });
+
+    // checking for relevant task in the database and deleting it
+    database
+      .collection("taskboard")
+      .where("taskname", "==", taskname)
+      .where("time", "==", time)
+      .get()
+      .then((data) => {
+        data = data.docs;
+        data.forEach(({ id }) => {
+          database
+            .collection("taskboard")
+            .doc(id)
+            .delete();
+        });
+      });
+
+    //updating users collection
+    database
+      .collection("users")
+      .doc(uid)
+      .update({
+        completedtasks: completed ? completedtasks - 1 : completedtasks,
+        totaltasks: totaltasks - 1,
+      });
+
+    await this.setState({
+      taskboard: updatedData,
+      tasks: updatedData,
+    });
+  };
+
+  togglecheckboxState = (checked, taskname, time) => {
+    /* marks task as complete or incomplete*/
+
+    const { uid } = this.props;
+    let { taskboard, completedtasks } = this.state;
+
+    // marking completed or incomplete based on the input
+    taskboard = taskboard.map((task) => {
+      const { data, id } = task;
+      if (data.taskname === taskname && data.time === time) {
+        data.completed = !checked;
+        return {
+          data: data,
+          id: id,
+        };
+      }
+      return task;
+    });
+
+    //updating the taskstate in the database
+    database
+      .collection("taskboard")
+      .where("taskname", "==", taskname)
+      .where("time", "==", time)
+      .get()
+      .then(async (data) => {
+        data = data.docs;
+        data.forEach(({ id }) => {
+          database
+            .collection("taskboard")
+            .doc(id)
+            .set({ completed: !checked }, { merge: true });
+        });
+      });
+
+    database
+      .collection("users")
+      .doc(uid)
+      .set(
+        {
+          completedtasks: !checked ? completedtasks + 1 : completedtasks - 1,
+        },
+        { merge: true }
+      );
+    this.setState({
+      taskboard: taskboard,
+    });
+  };
+
   render() {
     const { tasks, displaymodal } = this.state;
-    const {
-      uid,
-      taskboard,
-      totaltasks,
-      createNewTask,
-      deleteTask,
-      updateTaskName,
-    } = this.props;
     return (
       <div className="limiter">
         <div className="container">
-          <div className="d-flex bd-highlight-md">
-            <nav
-              className="navbar navbar-light  justify-content-between"
-              style={{ width: "100%" }}
-            >
-              <span className="login100-form-title">Tasks</span>
-              <div class="form-inline">
-                <input
-                  className="form-control mr-sm-2 input100"
-                  type="search"
-                  placeholder="Search by Task Name"
-                  aria-label="Search"
-                  style={{ height: "42px", background: "white" }}
-                  onChange={this.searchtaskbyname}
-                />
-                <button
-                  class="btn btn-primary my-2 my-sm-0"
-                  onClick={() => this.setState({ displaymodal: !displaymodal })}
-                >
-                  <i class="fa fa-plus mr-2" />
-                  Add Task
-                </button>
+          <div className="card-container ml-4">
+            <div className="container">
+              <div className="d-flex flex-sm-column flex-md-row justify-content-md-between">
+                <div className="text-left ml-3">
+                  <CardTitle>Tasks</CardTitle>
+                </div>
+                <div className="d-flex flex-sm-column flex-md-row align-self-md-end">
+                  <Input
+                    onChange={this.searchtaskbyname}
+                    type="search"
+                    placeholder="Search by Task Name"
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-block btn-primary mb-3"
+                    style={{ height: "50px" }}
+                    onClick={() =>
+                      this.setState({ displaymodal: !displaymodal })
+                    }
+                  >
+                    <i class="fa fa-plus mr-2" />
+                    Add Task
+                  </button>
+                </div>
               </div>
-            </nav>
-          </div>
-        </div>
-        <div className="card-container mb-3">
-          <div className="container">
-            <div className="row d-flex">
-              <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                <Wrapper
-                  style={{
-                    padding: "20px",
-                    background: "#fff",
-                    borderRadius: "10px",
-                    boxShadow: "0 3px 20px 0px rgba(0, 0, 0, 0.1)",
-                    maxHeight: "400px",
-                    overflow: "scroll",
-                  }}
-                >
-                  <div className="p-3">
-                    {tasks.map(({ data, id }) => {
-                      const { taskname, datecreated, completed, time } = data;
-                      return (
-                        <Task
-                          taskname={taskname}
-                          datecreated={datecreated}
-                          taskid={id}
-                          completed={completed}
-                          uid={uid}
-                          deleteTask={deleteTask}
-                          time={time}
-                          updateTaskName={updateTaskName}
-                        />
-                      );
-                    })}
-                    <Modal
-                      show={displaymodal}
-                      type="new"
-                      closeModal={() =>
-                        this.setState({ displaymodal: !displaymodal })
-                      }
-                      uid={uid}
-                      totaltasks={totaltasks}
-                      createNewTask={createNewTask}
-                    />
-                  </div>
-                </Wrapper>
+              <div className="row d-flex">
+                <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                  <Wrapper>
+                    <div className="p-3">
+                      {tasks.map(({ data, id }) => {
+                        const { taskname, datecreated, completed, time } = data;
+                        return (
+                          <Task
+                            taskname={taskname}
+                            datecreated={datecreated}
+                            taskid={id}
+                            completed={completed}
+                            time={time}
+                            updateTaskName={this.updateTaskName}
+                            deleteTask={this.deleteTask}
+                            togglecheckboxState={this.togglecheckboxState}
+                          />
+                        );
+                      })}
+                      <Modal
+                        show={displaymodal}
+                        type="new"
+                        closeModal={() =>
+                          this.setState({ displaymodal: !displaymodal })
+                        }
+                        createNewTask={this.createNewTask}
+                      />
+                    </div>
+                  </Wrapper>
+                </div>
               </div>
             </div>
           </div>
@@ -238,22 +388,12 @@ class TaskTable extends Component {
 }
 
 let mapStateToProps = (state) => {
-  let { taskboard, completedtasks, totaltasks } = state.tasks;
+  let { user } = state.authentication;
   return {
-    taskboard: taskboard,
-    completedtasks: completedtasks,
-    totaltasks: totaltasks,
+    completedtasks: user.completedtasks,
+    totaltasks: user.totaltasks,
+    uid: user.uid,
   };
 };
 
-let mapDispatchToProps = (dispatch) => {
-  return {
-    settasks: (taskboard, taskinfo) =>
-      retrievetasks(taskboard, taskinfo, dispatch),
-    updateTaskName: (e, taskname, time) =>
-      updateTaskName(e, taskname, time, dispatch),
-    createNewTask: (e) => createNewTask(e, dispatch),
-  };
-};
-
-export default connect(mapStateToProps, mapDispatchToProps)(TaskTable);
+export default connect(mapStateToProps, null)(TaskTable);

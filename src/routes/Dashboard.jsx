@@ -2,40 +2,44 @@ import React, { Component } from "react";
 import Navbar from "../components/navbar/Navbar";
 import Cards from "../components/tasks/Cards";
 import { connect } from "react-redux";
-import { ERASETASKBOARD, LOGOUT, STORETASKS } from "../redux/constants";
+import { LOGOUT, UPDATETASKINFO } from "../redux/constants";
 import { Redirect } from "react-router-dom";
 import TaskTable from "../components/tasks/TaskTable";
 import NoTasks from "../components/tasks/NoTasks";
-import { database } from "../app";
 
 class Dashboard extends Component {
-  state = {
-    loading: true,
-  };
-  componentDidMount = async () => {
-    this.setState({ loading: false });
-  };
   render() {
-    const { user, authenticated, logout, history } = this.props;
-    const { loading } = this.state;
-
-    return authenticated ? (
-      <div>
-        <Navbar user={user} logout={logout} history={history} />
-        {loading ? (
-          <></>
-        ) : (
+    const { user, authenticated, logout, history, updateTaskInfo } = this.props;
+    if (authenticated)
+      return (
+        <div>
+          <Navbar user={user} logout={logout} history={history} />
+          user.totaltasks ? (
           <>
-            <>
-              <Cards uid={user.uid} />
-              <TaskTable uid={user.uid} />
-            </>
+            {/* component with three cards 1.totaltask and completed 2. recenttasks 3.Visualization of tasks */}
+            <Cards
+              completedtasks={user.completedtasks}
+              totaltasks={user.totaltasks}
+            />
+            {/*component consisting of all the list of tasks */}
+            <TaskTable
+              uid={user.uid}
+              completedtasks={user.completedtasks}
+              totaltasks={user.totaltasks}
+            />
           </>
-        )}
-      </div>
-    ) : (
-      <Redirect to="/" />
-    );
+          ) : (
+          <NoTasks //component to be displayed when user has no tasks
+            uid={user.uid}
+            history={history}
+            updateTaskInfo={updateTaskInfo}
+          />
+          )
+        </div>
+      );
+    else {
+      return <Redirect to="/" />;
+    }
   }
 }
 
@@ -47,8 +51,17 @@ let mapStateToProps = (state) => {
 let mapDispatchToProps = (dispatch) => {
   return {
     logout: async () => {
-      await dispatch({ type: LOGOUT });
-      await dispatch({ type: ERASETASKBOARD });
+      await dispatch({ type: LOGOUT }); // removes all the user info from store
+    },
+    updateTaskInfo: async () => {
+      // called immediately after creation of new task
+      await dispatch({
+        type: UPDATETASKINFO,
+        payload: {
+          completedtasks: 0,
+          totaltasks: 1,
+        },
+      });
     },
   };
 };

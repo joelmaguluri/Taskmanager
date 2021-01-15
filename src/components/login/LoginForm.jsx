@@ -2,33 +2,34 @@ import React from "react";
 import { SETUSER } from "../../redux/constants";
 import { connect } from "react-redux";
 import { Redirect } from "react-router-dom";
-import "./login.css";
-import "./utils.css";
+import Input from "../widgets/Input";
+import Button from "../widgets/Button";
+import styled from "styled-components";
+import { database } from "../../app";
 
-async function getUserAsync(formData) {
-  let response = await fetch(
-    "http://localhost:5001/tdcx-dashboard-28b8f/us-central1/webApp/authenticate",
-    {
-      method: "POST",
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: formData,
-    }
-  );
-  response = await response.json();
-  console.log(response);
-  return response;
-}
+const Wrapper = styled.div`
+  padding: 8rem 0;
+`;
+const FormWrapper = styled.div`
+  background: white;
+  border-radius: 10px;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 20px 0px;
+`;
 
-const handleSubmit = async (setuser, e, history) => {
+const AuthenticateUser = async (setuser, e, history) => {
   e.preventDefault();
-  let formData = JSON.stringify({
-    Id: e.target["Id"].value,
-    name: e.target["name"].value,
+  let Id = e.target["Id"].value;
+  let username = e.target["name"].value;
+  let response = await database
+    .collection("users")
+    .where("Id", "==", Id)
+    .where("name", "==", username)
+    .get();
+  console.log(response);
+  await response.docs.forEach((doc) => {
+    setuser(doc.data());
   });
-  let response = await getUserAsync(formData);
+
   if (response.success) {
     setuser(response.user);
     history.push("/dashboard");
@@ -37,52 +38,47 @@ const handleSubmit = async (setuser, e, history) => {
 
 const LoginForm = ({ setuser, history, authenticated }) => {
   return authenticated ? (
-    <Redirect to="/dashboard" />
+    <Redirect to="/dashboard" /> // if user is authenticated redirecting him to /dashboard
   ) : (
-    <div className="limiter">
-      <div className="container-login100">
-        <div className="wrap-login100 p-l-55 p-r-55 p-t-65 p-b-50">
-          <form
-            className="login100-form validate-form"
-            onSubmit={(e) => {
-              handleSubmit(setuser, e, history);
-            }}
-          >
-            <span className="login100-form-title p-b-33 text-left">Login</span>
-            <div
-              className="wrap-input100 validate-input mb-4"
-              data-validate="Valid email is required: ex@abc.xyz"
-            >
-              <input
-                className="input100"
-                type="text"
-                name="Id"
-                placeholder="Id"
-              />
-            </div>
-            <div
-              className="wrap-input100 rs1 validate-input mb-4"
-              data-validate="Password is required"
-            >
-              <input
-                className="input100"
-                type="text"
-                name="name"
-                placeholder="name"
-              />
-            </div>
-            <div className="container-login100-form-btn mt-20">
-              <button className="login100-form-btn">Login</button>
-            </div>
-          </form>
+    // displaying loginform if not authenticated
+    <Wrapper className="content">
+      <div className="container">
+        <div className="row justify-content-center">
+          <div className="col-md-6 contents">
+            <FormWrapper className="row justify-content-center">
+              <div className="col-md-12 p-5 m-5">
+                <div className="form-block">
+                  <div className="mb-4">
+                    <h3>
+                      <strong>Login</strong>
+                    </h3>
+                  </div>
+                  <form
+                    onSubmit={(e) => {
+                      AuthenticateUser(setuser, e, history);
+                    }}
+                  >
+                    <Input type="text" name="Id" placeholder="Id" />
+                    <Input type="password" name="name" placeholder="name" />
+
+                    <Button
+                      type="submit"
+                      className="btn btn-block btn-primary mt-4"
+                    >
+                      Log In
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            </FormWrapper>
+          </div>
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 };
 
 let mapStateToProps = (state) => {
-  console.log(state);
   return {
     authenticated: state.authentication.authenticated,
   };

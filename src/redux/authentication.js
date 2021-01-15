@@ -3,7 +3,7 @@ import { LOGOUT, SETUSER, UPDATETASKINFO } from "./constants";
 
 const initialState = {authenticated: false, user:null};
 
-const AuthenticationReducer = (state = initialState, action) => {
+const UserReducer = (state = initialState, action) => {
   switch (action.type) {
     case SETUSER:// set the user data in store if authentication was successful
         return {user:{...action.payload},authenticated:'true'};
@@ -17,4 +17,4 @@ const AuthenticationReducer = (state = initialState, action) => {
   }
 };
 
-export default AuthenticationReducer;
+export default UserReducer;

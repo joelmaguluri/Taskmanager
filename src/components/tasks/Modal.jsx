@@ -73,6 +73,7 @@ const Modal = (props) => {
                                   type="text"
                                   name="task"
                                   placeholder="taskname"
+                                  padding={1}
                                 />
 
                                 <Button

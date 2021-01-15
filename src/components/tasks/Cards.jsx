@@ -20,10 +20,11 @@ const CardWrapper = styled.div`
   border-radius: 10px;
   box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 20px 0px;
   min-height: 300px;
-  max-height: 400px;
+  max-height: 300px;
   min-width: 300px;
   border: 0;
   width: 100%;
+  overflow: hidden;
 `;
 
 const RecentTask = ({ taskname, completed }) => {
@@ -41,22 +42,30 @@ const RecentTask = ({ taskname, completed }) => {
   );
 };
 export default class Cards extends Component {
-  componentDidMount = () => {
+  state = {
+    recenttasks: [],
+  };
+  getTasks = async () => {
+    let taskboard = await database.collection("taskboard").get();
+    taskboard = taskboard.docs;
+    taskboard = taskboard.map((doc) => ({
+      data: doc.data(),
+      id: doc.id,
+    }));
+    this.setState({
+      recenttasks: taskboard,
+    });
+  };
+  componentDidMount = async () => {
+    this.getTasks();
+    /*attaching listener which responds to database 
+    updation events and updates component state*/
     database.collection("taskboard").onSnapshot(async (snapshot) => {
-      let taskboard = await database.collection("taskboard").get();
-      taskboard = taskboard.docs;
-      taskboard = taskboard.map((doc) => ({
-        data: doc.data(),
-        id: doc.id,
-      }));
-      this.setState({
-        recenttasks: taskboard,
-      });
+      this.getTasks();
     });
   };
 
   render() {
-    const { recenttasks } = this.state;
     const { completedtasks, totaltasks } = this.props;
     return (
       <div className="container">
@@ -96,7 +105,7 @@ export default class Cards extends Component {
                     <div className="d-flex flex-row">
                       <div className="text-left" style={{ width: "100%" }}>
                         <UnorderedList>
-                          {recenttasks.map(({ data, id }) => {
+                          {this.state.recenttasks.map(({ data, id }) => {
                             const { taskname, completed } = data;
 
                             return (

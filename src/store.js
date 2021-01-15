@@ -1,6 +1,6 @@
 import {createStore, applyMiddleware, compose, combineReducers} from "redux";
+import UserReducer from "./redux/authentication";
 
-import AuthenticationReducer from './redux/authentication'
 
 // Create store with reducers and initial state
 
@@ -34,7 +34,7 @@ export const saveState = (state) => {
 let persistedState=loadState()
 const store = createStore(
   combineReducers({
-    authentication: AuthenticationReducer,
+    authentication: UserReducer,
   }),
   persistedState,
   composeEnhancers(applyMiddleware(...middleware))

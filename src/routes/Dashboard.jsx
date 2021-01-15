@@ -14,27 +14,28 @@ class Dashboard extends Component {
       return (
         <div>
           <Navbar user={user} logout={logout} history={history} />
-          user.totaltasks ? (
-          <>
-            {/* component with three cards 1.totaltask and completed 2. recenttasks 3.Visualization of tasks */}
-            <Cards
-              completedtasks={user.completedtasks}
-              totaltasks={user.totaltasks}
-            />
-            {/*component consisting of all the list of tasks */}
-            <TaskTable
-              uid={user.uid}
-              completedtasks={user.completedtasks}
-              totaltasks={user.totaltasks}
-            />
-          </>
+          {user.totaltasks ? (
+            <>
+              {/* component with three cards 1.totaltask and completed 2. recenttasks 3.Visualization of tasks */}
+              <Cards
+                completedtasks={user.completedtasks}
+                totaltasks={user.totaltasks}
+              />
+              {/*component consisting of all the list of tasks */}
+              <TaskTable
+                uid={user.uid}
+                completedtasks={user.completedtasks}
+                totaltasks={user.totaltasks}
+                updateTaskInfo={updateTaskInfo}
+              />
+            </>
           ) : (
-          <NoTasks //component to be displayed when user has no tasks
-            uid={user.uid}
-            history={history}
-            updateTaskInfo={updateTaskInfo}
-          />
-          )
+            <NoTasks //component to be displayed when user has no tasks
+              uid={user.uid}
+              history={history}
+              updateTaskInfo={updateTaskInfo}
+            />
+          )}
         </div>
       );
     else {
@@ -53,15 +54,8 @@ let mapDispatchToProps = (dispatch) => {
     logout: async () => {
       await dispatch({ type: LOGOUT }); // removes all the user info from store
     },
-    updateTaskInfo: async () => {
-      // called immediately after creation of new task
-      await dispatch({
-        type: UPDATETASKINFO,
-        payload: {
-          completedtasks: 0,
-          totaltasks: 1,
-        },
-      });
+    updateTaskInfo: (payload) => {
+      dispatch({ type: UPDATETASKINFO, payload: payload });
     },
   };
 };

@@ -68,7 +68,7 @@ const Task = ({
             <div>
               <div className="content-todo">
                 <h5 className="font-medium font-16 todo-header mb-0">
-                  {taskname}
+                  {state.checked ? <del>taskname</del> : taskname}
                 </h5>
                 <span className="todo-time font-12 text-muted">
                   {datecreated}
@@ -131,14 +131,15 @@ class TaskTable extends Component {
   };
 
   componentDidMount = async () => {
+    console.log("called");
     //updating the component with tasks after retrieving from database
     let taskboard = await database.collection("taskboard").get();
-    taskboard = taskboard.docs;
+    taskboard = await taskboard.docs;
     taskboard = taskboard.map((doc) => ({
       data: doc.data(),
       id: doc.id,
     }));
-    this.setState({
+    await this.setState({
       taskboard: taskboard,
       tasks: taskboard,
     });
@@ -164,8 +165,8 @@ class TaskTable extends Component {
     /* creates new task updates the component state 
     and store the new task in database*/
     e.preventDefault();
-    const { uid } = this.props;
-    let { taskboard, completedtasks, totaltasks } = this.state;
+    const { uid, updateTaskInfo, completedtasks, totaltasks } = this.props;
+    let { taskboard } = this.state;
     let date = new Date();
     let taskname = e.target["task"].value;
 
@@ -176,8 +177,13 @@ class TaskTable extends Component {
       time: date.getTime(),
     };
 
-    database.collection("taskboard").add(data);
+    await database.collection("taskboard").add(data);
     taskboard = [...taskboard, { data: data, id: data.time }];
+
+    await this.setState({
+      taskboard: taskboard,
+      tasks: taskboard,
+    });
 
     //Incrementing total tasks field of user document in database
     database
@@ -194,10 +200,12 @@ class TaskTable extends Component {
       .catch((e) => console.log(e));
 
     //setting the component state with new task
-    await this.setState({
-      taskboard: taskboard,
-    });
+
     // dispatch method to modify store with new values
+    updateTaskInfo({
+      completedtasks: completedtasks,
+      totaltasks: totaltasks + 1,
+    });
   };
 
   updateTaskName = (e, taskname, time) => {
@@ -227,8 +235,8 @@ class TaskTable extends Component {
   deleteTask = async (taskname, time, completed) => {
     /* Deletes the task from the component state and also from the database*/
 
-    let { taskboard, completedtasks, totaltasks } = this.state;
-    const { uid } = this.props;
+    let { taskboard } = this.state;
+    const { uid, updateTaskInfo, completedtasks, totaltasks } = this.props;
 
     //filtering tasks to find the relevant task and to delete it
     let updatedData = [];
@@ -263,6 +271,10 @@ class TaskTable extends Component {
         totaltasks: totaltasks - 1,
       });
 
+    updateTaskInfo({
+      completedtasks: completed ? completedtasks - 1 : completedtasks,
+      totaltasks: totaltasks - 1,
+    });
     await this.setState({
       taskboard: updatedData,
       tasks: updatedData,
@@ -272,8 +284,8 @@ class TaskTable extends Component {
   togglecheckboxState = (checked, taskname, time) => {
     /* marks task as complete or incomplete*/
 
-    const { uid } = this.props;
-    let { taskboard, completedtasks } = this.state;
+    const { uid, updateTaskInfo, completedtasks } = this.props;
+    let { taskboard } = this.state;
 
     // marking completed or incomplete based on the input
     taskboard = taskboard.map((task) => {
@@ -313,12 +325,17 @@ class TaskTable extends Component {
         },
         { merge: true }
       );
+
+    updateTaskInfo({
+      completedtasks: !checked ? completedtasks + 1 : completedtasks - 1,
+    });
     this.setState({
       taskboard: taskboard,
     });
   };
 
   render() {
+    console.log(this.state);
     const { tasks, displaymodal } = this.state;
     return (
       <div className="limiter">

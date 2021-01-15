@@ -27,7 +27,7 @@ const AuthenticateUser = async (setuser, e, history) => {
     .get();
   console.log(response);
   await response.docs.forEach((doc) => {
-    setuser(doc.data());
+    setuser({ ...doc.data(), uid: doc.id });
   });
 
   if (response.success) {

@@ -13,6 +13,7 @@ const storeFirstTask = async (e, uid) => {
     datecreated: date.toDateString(),
     time: date.getTime(),
   };
+  await database.collection("taskboard").add(data);
   await database
     .collection("users")
     .doc(uid)
@@ -23,7 +24,6 @@ const storeFirstTask = async (e, uid) => {
       },
       { merge: true }
     );
-  database.collection("taskboard").add(data);
 };
 const NoTasks = (props) => {
   const [show, updateState] = useState(0);
@@ -70,7 +70,7 @@ const NoTasks = (props) => {
         closeModal={() => updateState(!show)}
         createNewTask={(e) => {
           storeFirstTask(e, props.uid, props.history);
-          props.updateTaskInfo();
+          props.updateTaskInfo({ completedtasks: 0, totaltasks: 1 });
         }}
       />
     </div>

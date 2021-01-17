@@ -68,7 +68,7 @@ const Task = ({
             <div>
               <div className="content-todo">
                 <h5 className="font-medium font-16 todo-header mb-0">
-                  {state.checked ? <del>taskname</del> : taskname}
+                  {state.checked ? <del>taskname</del> : { taskname }}
                 </h5>
                 <span className="todo-time font-12 text-muted">
                   {datecreated}

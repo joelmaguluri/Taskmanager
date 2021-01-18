@@ -68,7 +68,7 @@ const Task = ({
             <div>
               <div className="content-todo">
                 <h5 className="font-medium font-16 todo-header mb-0">
-                  {state.checked ? <del>taskname</del> : { taskname }}
+                  {state.checked ? <del>{taskname}</del> : `${taskname}`}
                 </h5>
                 <span className="todo-time font-12 text-muted">
                   {datecreated}
@@ -226,9 +226,25 @@ class TaskTable extends Component {
       }
       return task;
     });
+    // checking for relevant task in the database and deleting it
+    database
+      .collection("taskboard")
+      .where("taskname", "==", taskname)
+      .where("time", "==", time)
+      .get()
+      .then((data) => {
+        data = data.docs;
+        data.forEach(({ id }) => {
+          database
+            .collection("taskboard")
+            .doc(id)
+            .update({ taskname: newtaskname });
+        });
+      });
 
     this.setState({
       taskboard: taskboard,
+      tasks: taskboard,
     });
   };
 
